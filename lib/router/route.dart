@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:go_router/go_router.dart';
 import 'package:kickavenue_clone/pages/login.dart';
 import 'package:kickavenue_clone/pages/product.dart';
 
+import '../pages/checkout.dart';
 import '../pages/error.dart';
 import '../pages/home.dart';
 import '../pages/setting.dart';
@@ -49,6 +52,15 @@ final GoRouter router = GoRouter(
       path: "/login",
       builder: (context, state) {
         return const LoginPage();
+      },
+    ),
+    GoRoute(
+      name: 'checkout',
+      path: "/checkout/:product",
+      builder: (context, state) {
+        return CheckoutPage(
+          product: json.decode(state.params["product"]!),
+        );
       },
     ),
   ],

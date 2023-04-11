@@ -113,7 +113,7 @@ class Availables {
   final bool sneakers_defect;
   final int sold;
   final String status;
-  final dynamic subsidy_price;
+  final String? subsidy_price;
   final dynamic total_subsidy;
   final String updated_at;
   final dynamic updated_source;
@@ -162,6 +162,91 @@ class Availables {
     required this.user_id,
     required this.yellowing,
   });
+
+  factory Availables.fromJson(Map<String, dynamic> json) => Availables(
+        approved_at: json['approved_at'],
+        asking_price: json['asking_price'],
+        box_condition: json['box_condition'],
+        bulk_id: json['bulk_id'],
+        consignment_id: json['consignment_id'],
+        created_at: json['created_at'],
+        created_source: json['created_source'],
+        currency: json['currency'],
+        day_lefts: json['day_lefts'],
+        defects: List<dynamic>.from(json['defects'].map((x) => x)),
+        display_item: json['display_item'],
+        expiry: json['expiry'],
+        highest_bid: HighestBid.fromJson(json['highest_bid']),
+        id: json['id'],
+        is_expired: json['is_expired'],
+        minus_conditions: json['minus_conditions'],
+        missing_accessories: json['missing_accessories'],
+        note: json['note'],
+        origin_country: json['origin_country'],
+        pre_order: json['pre_order'],
+        pre_verified: json['pre_verified'],
+        product_variant: Map<String, dynamic>.from(json['product_variant']),
+        product_variant_id: json['product_variant_id'],
+        purchase_price: json['purchase_price'],
+        quantity: json['quantity'],
+        rack: json['rack'],
+        size: Size.fromJson(json['size']),
+        size_id: json['size_id'],
+        sneakers_condition: json['sneakers_condition'],
+        sneakers_defect: json['sneakers_defect'],
+        sold: json['sold'],
+        status: json['status'],
+        subsidy_price: json['subsidy_price'],
+        total_subsidy: json['total_subsidy'],
+        updated_at: json['updated_at'],
+        updated_source: json['updated_source'],
+        user_sell_images:
+            List<dynamic>.from(json['user_sell_images'].map((x) => x)),
+        user_id: json['user_id'],
+        yellowing: json['yellowing'],
+      );
+
+  Map<String, dynamic> toJson() => {
+        'approved_at': approved_at,
+        'asking_price': asking_price,
+        'box_condition': box_condition,
+        'bulk_id': bulk_id,
+        'consignment_id': consignment_id,
+        'created_at': created_at,
+        'created_source': created_source,
+        'currency': currency,
+        'day_lefts': day_lefts,
+        'defects': defects,
+        'display_item': display_item,
+        'expiry': expiry,
+        'highest_bid': highest_bid.toJson(),
+        'id': id,
+        'is_expired': is_expired,
+        'minus_conditions': minus_conditions,
+        'missing_accessories': missing_accessories,
+        'note': note,
+        'origin_country': origin_country,
+        'pre_order': pre_order,
+        'pre_verified': pre_verified,
+        'product_variant': product_variant,
+        'product_variant_id': product_variant_id,
+        'purchase_price': purchase_price,
+        'quantity': quantity,
+        'rack': rack,
+        'size': size.toJson(),
+        'size_id': size_id,
+        'sneakers_condition': sneakers_condition,
+        'sneakers_defect': sneakers_defect,
+        'sold': sold,
+        'status': status,
+        'subsidy_price': subsidy_price,
+        'total_subsidy': total_subsidy,
+        'updated_at': updated_at,
+        'updated_source': updated_source,
+        'user_sell_images': user_sell_images,
+        'user_id': user_id,
+        'yellowing': yellowing,
+      };
 }
 
 class Size {
@@ -203,6 +288,19 @@ class Size {
       updated_at: json['updated_at'] as String,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'EUR': EUR,
+        'UK': UK,
+        'US': US,
+        'brand_id': brand_id,
+        'cm': cm,
+        'created_at': created_at,
+        'id': id,
+        'inch': inch,
+        'sex': sex,
+        'updated_at': updated_at,
+      };
 }
 
 class HighestBid {
@@ -233,4 +331,12 @@ class HighestBid {
         ref_number: json['ref_number'] as dynamic,
         size_id: json['size_id'] as int);
   }
+
+  Map<String, dynamic> toJson() => {
+        'amount': amount,
+        'id': id,
+        'product_variant_id': product_variant_id,
+        'ref_number': ref_number,
+        'size_id': size_id,
+      };
 }

@@ -6,12 +6,12 @@ class Api {
   late String apiPath;
 
   Api() {
-    apiPath = 'https://develop3.kickavenue.com';
+    apiPath = 'https://api.kickavenue.com';
   }
 
   Api.elasticSearch()
       : apiPath =
-            'https://ywawsbj8j7.execute-api.ap-southeast-1.amazonaws.com/dev/search';
+            'https://ecngcyc9sa.execute-api.ap-southeast-1.amazonaws.com/prod/search';
 
   Future<Map<String, dynamic>> request(String url) async {
     try {

@@ -1,22 +1,25 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kickavenue_clone/api/dio.dart';
 import 'package:kickavenue_clone/helper/database.dart';
+import 'package:kickavenue_clone/provider/is_logged_in.dart';
+import 'package:kickavenue_clone/provider/user.dart';
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage> {
   String email = '';
   String password = '';
 
-  loggedIn() async {
+  Future<bool> loggedIn() async {
     if (email.isEmpty) {
       const snackBar = SnackBar(
         duration: Duration(seconds: 5),
@@ -25,7 +28,7 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      return;
+      return false;
     }
 
     if (password.isEmpty) {
@@ -36,7 +39,7 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      return;
+      return false;
     }
 
     try {
@@ -70,7 +73,7 @@ class _LoginPageState extends State<LoginPage> {
       if (context.mounted) {
         showDialog(context: context, builder: (context) => alert);
       }
-      return;
+      return true;
     } catch (e) {
       const snackBar = SnackBar(
         duration: Duration(seconds: 2),
@@ -79,7 +82,7 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      return;
+      return false;
     }
   }
 
@@ -125,7 +128,12 @@ class _LoginPageState extends State<LoginPage> {
               keyboardType: TextInputType.visiblePassword,
             ),
             ElevatedButton(
-              onPressed: loggedIn,
+              onPressed: () async {
+                loggedIn().then((val) {
+                  ref.read(loginStatusProvider.notifier).checkLogin();
+                  ref.read(userDataProvider.notifier).checkUser();
+                });
+              },
               child: const Text('Login'),
             ),
           ],

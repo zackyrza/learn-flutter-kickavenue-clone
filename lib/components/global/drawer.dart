@@ -1,46 +1,21 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kickavenue_clone/helper/database.dart';
+import 'package:kickavenue_clone/provider/is_logged_in.dart';
+import 'package:kickavenue_clone/provider/user.dart';
 
-class DrawerWidget extends StatefulWidget {
+class DrawerWidget extends ConsumerWidget {
   const DrawerWidget({super.key});
 
   @override
-  State<DrawerWidget> createState() => _DrawerWidgetState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    bool isLoggedIn = ref.watch(loginStatusProvider);
+    Map<String, dynamic> userInfo = ref.watch(userDataProvider);
 
-class _DrawerWidgetState extends State<DrawerWidget> {
-  bool isLoggedIn = false;
-  Map<String, dynamic> userInfo = {};
+    ref.read(loginStatusProvider.notifier).checkLogin();
+    ref.read(userDataProvider.notifier).checkUser();
 
-  @override
-  initState() {
-    super.initState();
-
-    setState(() {
-      checkLogin().then((value) => isLoggedIn = value);
-    });
-    setState(() {
-      checkUser().then((value) => userInfo = value);
-    });
-  }
-
-  Future<Map<String, dynamic>> checkUser() async {
-    final String userStringData = await LocalStorage.instance.get('user');
-    if (userStringData.isNotEmpty) return json.decode(userStringData);
-    return {};
-  }
-
-  Future<bool> checkLogin() async {
-    final String loginStatus = await LocalStorage.instance.get('isLoggedIn');
-    if (loginStatus.isNotEmpty) return loginStatus == 'true';
-    return false;
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
@@ -68,7 +43,12 @@ class _DrawerWidgetState extends State<DrawerWidget> {
                   title: const Text(
                     'Logout',
                   ),
-                  onTap: () {},
+                  onTap: () async {
+                    await LocalStorage.instance.remove('user');
+                    await LocalStorage.instance.remove('isLoggedIn');
+                    ref.read(loginStatusProvider.notifier).removeLogin();
+                    ref.read(userDataProvider.notifier).removeUser();
+                  },
                 )
               : ListTile(
                   title: const Text(
