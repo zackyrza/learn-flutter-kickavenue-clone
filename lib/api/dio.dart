@@ -6,12 +6,12 @@ class Api {
   late String apiPath;
 
   Api() {
-    apiPath = 'https://api.kickavenue.com';
+    apiPath = 'https://develop3.kickavenue.com';
   }
 
   Api.elasticSearch()
       : apiPath =
-            'https://ecngcyc9sa.execute-api.ap-southeast-1.amazonaws.com/prod/search';
+            'https://ywawsbj8j7.execute-api.ap-southeast-1.amazonaws.com/dev/search';
 
   Future<Map<String, dynamic>> request(String url) async {
     try {
@@ -45,9 +45,16 @@ class Api {
 
   Future<Map<String, dynamic>> post(
       String url, Map<String, dynamic> data) async {
+    final String token = await LocalStorage.instance.get('token');
     try {
       Response response;
-      response = await dio.post('$apiPath/$url', data: data);
+      response = await dio.post('$apiPath/$url',
+          data: data,
+          options: Options(
+            headers: {
+              'Authorization': 'Bearer $token',
+            },
+          ));
       return response.data;
     } catch (e) {
       return {

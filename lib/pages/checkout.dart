@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:kickavenue_clone/components/checkout/address_bottom_sheet.dart';
 import 'package:kickavenue_clone/components/checkout/payment_bottom_sheet.dart';
 import 'package:kickavenue_clone/helper/currency.dart';
@@ -8,6 +9,9 @@ import 'package:kickavenue_clone/interface/product.dart';
 import 'package:kickavenue_clone/provider/couriers.dart';
 import 'package:kickavenue_clone/provider/default_shipping.dart';
 import 'package:kickavenue_clone/provider/eta_text.dart';
+
+import '../api/dio.dart';
+import '../provider/user.dart';
 
 class CheckoutPage extends ConsumerStatefulWidget {
   final Map<String, dynamic> product;
@@ -23,19 +27,185 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   bool isBuyNow = true;
   Map<String, dynamic> payment = {};
   String price = '0';
+  int shippingFee = 0;
+  Map<String, dynamic> selectedAddress = {};
+  bool isFullWallet = false;
+  bool useKickPoint = false;
+
+  bool submittingPayment = false;
+
+  var txt = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     setState(() {
       currentProduct = Availables.fromJson(widget.product);
+      price = currentProduct!.asking_price
+          .substring(0, currentProduct!.asking_price.length - 3);
+      txt.text = currentProduct!.asking_price
+          .substring(0, currentProduct!.asking_price.length - 3);
     });
+  }
+
+  Future<bool> pay() async {
+    try {
+      setState(() {
+        submittingPayment = true;
+      });
+      final provinceResult = await Api()
+          .request('postalcode/province?country=${selectedAddress['country']}');
+      final List<dynamic> provinceList = provinceResult['data'].toList();
+
+      final citiesResult = await Api().request(
+          'postalcode/city?province=${selectedAddress['province']}&country=${selectedAddress['country']}');
+      final List<dynamic> cityList = citiesResult['data'].toList();
+
+      final provinceId = provinceList.firstWhere((element) {
+        return element['name'] == selectedAddress['province'];
+      })['id'];
+      final cityId = cityList.firstWhere((element) {
+        return element['name'] == selectedAddress['city'];
+      })['id'];
+
+      String endpointUri = '';
+
+      final shippingPayload = {
+        'id': selectedAddress['id'],
+        'alias': selectedAddress['alias'],
+        'full_name': selectedAddress['full_name'],
+        'phone_number': selectedAddress['phone_number'],
+        'street_address': selectedAddress['street_address'],
+        'note': selectedAddress['note'],
+        'country': selectedAddress['country'],
+        'province': selectedAddress['province'],
+        'province_id': provinceList.isNotEmpty ? provinceId : 0,
+        'city': selectedAddress['city'],
+        'city_id': citiesResult.isNotEmpty ? cityId : 0,
+        'postal_code': selectedAddress['postal_code'],
+      };
+      final currentUser = ref.read(userDataProvider);
+      final kickCredit = int.parse(currentUser['balance']
+          .substring(0, currentUser['balance'].length - 3));
+      final sellerCredit = int.parse(currentUser['balance_with_fee']
+          .substring(0, currentUser['balance_with_fee'].length - 3));
+      final kickPoint = int.parse(currentUser['locked_balance']
+          .substring(0, currentUser['locked_balance'].length - 3));
+      final totalWalletWithoutKickPoint = kickCredit + sellerCredit;
+
+      int totalWalletUsage =
+          isFullWallet ? totalWalletWithoutKickPoint + shippingFee : 0;
+
+      if (useKickPoint) {
+        totalWalletUsage += kickPoint;
+      }
+
+      final buyNowPayload = {
+        'administration_fee': 0,
+        'currency': 'IDR',
+        'facebook_ad_campaign': null,
+        'ka_courier_option': 'FLAT_RATE',
+        'ka_courier_price': shippingFee,
+        'offer_amount': int.parse(price),
+        'payment_method': payment['payment_method'],
+        'point_enabled': useKickPoint,
+        'quantity': 1,
+        'shipping': shippingPayload,
+        'subsidy_price': 0,
+        'unique_amount': 0,
+        'user_sell_id': currentProduct!.id,
+        'wallet_amount': totalWalletUsage,
+      };
+
+      final makeOfferPayload = {
+        'shipping_id': shippingPayload['id'],
+        'shipping': shippingPayload,
+        'product_variant_id': currentProduct!.product_variant_id,
+        'size_id': currentProduct!.size_id,
+        'payment_method': payment['payment_method'],
+        'amount': int.parse(price),
+        'ka_courier_price': shippingFee,
+        'administration_fee': 0,
+        'user_sell_id': currentProduct!.id,
+        'point_enabled': useKickPoint,
+      };
+
+      switch (buyNowPayload['payment_method']) {
+        case VIRTUALACCOUNT:
+          endpointUri = 'users/payments/xendit';
+          break;
+        case CREDITCARD:
+        case BCA_INSTALLMENTS:
+        case BCA_VA:
+        case BRI_VA:
+        case PERMATA_VA:
+        case BNI_VA:
+        case MANDIRI_VA:
+        case MANDIRI_CREDIT_CARD:
+        case GOPAY:
+          endpointUri = 'users/payments/midtrans';
+          break;
+        case KREDIVO:
+          endpointUri = 'users/payments/kredivo';
+          break;
+        case AKULAKU:
+          endpointUri = 'users/payments/akulaku';
+          break;
+        case ATOME:
+          endpointUri = 'users/payments/atome';
+          break;
+        case FULLWALLET:
+        default:
+          endpointUri = 'users/payments';
+          break;
+      }
+
+      final result = await Api().post(endpointUri, buyNowPayload);
+      print(result);
+
+      setState(() {
+        submittingPayment = false;
+      });
+
+      if (context.mounted) {
+        context.pushNamed("payment", params: {
+          'invoice': '',
+        });
+      }
+
+      return true;
+    } catch (e) {
+      print(e);
+      setState(() {
+        submittingPayment = false;
+      });
+      return false;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     AsyncValue etaTexts = ref.watch(etaProvider);
     AsyncValue defaultShipping = ref.watch(defaultShippingProvider);
+    Map<String, dynamic> userInfo = ref.watch(userDataProvider);
+
+    selectedAddress = defaultShipping.maybeWhen(
+        data: (value) => value,
+        orElse: () => {
+              'id': null,
+              'alias': null,
+              'full_name': null,
+              'phone_number': null,
+              'street_address': null,
+              'note': null,
+              'country': null,
+              'province': null,
+              'province_id': null,
+              'city': null,
+              'city_id': null,
+              'postal_code': null,
+            });
+
     ref.read(courierProvider.notifier).fetch(
         country: defaultShipping.value == null
             ? 'IDN'
@@ -48,6 +218,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         productVariantId: currentProduct!.product_variant_id,
         weight: currentProduct!.product_variant['weight']);
     final shippingFee = ref.watch(courierProvider);
+    this.shippingFee = shippingFee;
 
     final lowestAsk = currentProduct == null
         ? 0
@@ -97,7 +268,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     final bool enabledButton = payment.isNotEmpty &&
         amountToBePaid > 0 &&
         defaultShipping.value != null &&
-        price != '0';
+        price != '0' &&
+        !submittingPayment;
 
     return Scaffold(
       appBar: AppBar(
@@ -108,7 +280,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         width: double.infinity,
         margin: const EdgeInsets.only(bottom: 20, left: 25, right: 25),
         child: ElevatedButton(
-          onPressed: enabledButton ? () {} : null,
+          onPressed: enabledButton ? pay : null,
           style: ButtonStyle(
             backgroundColor: MaterialStateProperty.all(Colors.blue),
             shape: MaterialStateProperty.all(
@@ -117,7 +289,11 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
               ),
             ),
           ),
-          child: const Text('Pay Now'),
+          child: !submittingPayment
+              ? const Text('Pay Now')
+              : const CircularProgressIndicator(
+                  color: Colors.white,
+                ),
         ),
       ),
       body: SingleChildScrollView(
@@ -139,6 +315,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                         child: InkWell(
                           onTap: () => setState(() {
                             isBuyNow = true;
+                            price = lowestAsk.toString();
+                            txt.text = lowestAsk.toString();
                           }),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -254,6 +432,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
             Container(
               margin: const EdgeInsets.all(15),
               child: TextField(
+                controller: txt,
+                enabled: isBuyNow ? false : true,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
                   hintText: 'Place your price here..',
@@ -399,6 +579,11 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                   );
                   setState(() {
                     payment = paymentMethodValue ?? {};
+                    if (payment!['payment_method'] == FULLWALLET) {
+                      isFullWallet = true;
+                    } else {
+                      isFullWallet = false;
+                    }
                   });
                 },
                 child: Row(
@@ -415,6 +600,45 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                 ),
               ),
             ),
+            payment.isNotEmpty && payment['payment_method'] == FULLWALLET
+                ? Container(
+                    margin: const EdgeInsets.only(left: 25, right: 15, top: 15),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        SizedBox(
+                          width: 250,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Use Kick points',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                  'Kick Credit: Rp ${formatCurrency.format(int.parse(userInfo['balance'].substring(0, userInfo['balance'].length - 3)))}'),
+                              Text(
+                                  'Kick Point: Rp ${formatCurrency.format(int.parse(userInfo['locked_balance'].substring(0, userInfo['locked_balance'].length - 3)))}'),
+                            ],
+                          ),
+                        ),
+                        Switch(
+                          // This bool value toggles the switch.
+                          value: useKickPoint,
+                          activeColor: Colors.blue,
+                          onChanged: (bool value) {
+                            // This is called when the user toggles the switch.
+                            setState(() {
+                              useKickPoint = value;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  )
+                : Container(),
             Container(
               margin: const EdgeInsets.only(left: 15, right: 15, top: 15),
               padding: const EdgeInsets.all(15),

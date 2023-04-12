@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:go_router/go_router.dart';
 import 'package:kickavenue_clone/pages/login.dart';
+import 'package:kickavenue_clone/pages/payment.dart';
 import 'package:kickavenue_clone/pages/product.dart';
 
 import '../pages/checkout.dart';
@@ -60,6 +61,15 @@ final GoRouter router = GoRouter(
       builder: (context, state) {
         return CheckoutPage(
           product: json.decode(state.params["product"]!),
+        );
+      },
+    ),
+    GoRoute(
+      name: 'payment',
+      path: "/payment/:invoice",
+      builder: (context, state) {
+        return PaymentPage(
+          invoice: state.params["invoice"]!,
         );
       },
     ),
