@@ -48,13 +48,20 @@ class Api {
     final String token = await LocalStorage.instance.get('token');
     try {
       Response response;
-      response = await dio.post('$apiPath/$url',
+      if (token.isNotEmpty) {
+        response = await dio.post('$apiPath/$url',
+            data: data,
+            options: Options(
+              headers: {
+                'Authorization': 'Bearer $token',
+              },
+            ));
+      } else {
+        response = await dio.post(
+          '$apiPath/$url',
           data: data,
-          options: Options(
-            headers: {
-              'Authorization': 'Bearer $token',
-            },
-          ));
+        );
+      }
       return response.data;
     } catch (e) {
       return {

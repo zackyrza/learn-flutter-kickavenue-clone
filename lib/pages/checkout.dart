@@ -3,11 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kickavenue_clone/components/checkout/address_bottom_sheet.dart';
 import 'package:kickavenue_clone/components/checkout/payment_bottom_sheet.dart';
+import 'package:kickavenue_clone/components/checkout/promo_product_bottom_sheet.dart';
+import 'package:kickavenue_clone/components/checkout/voucher_bottom_sheet.dart';
 import 'package:kickavenue_clone/helper/currency.dart';
 import 'package:kickavenue_clone/helper/general.dart';
 import 'package:kickavenue_clone/interface/product.dart';
 import 'package:kickavenue_clone/provider/couriers.dart';
-import 'package:kickavenue_clone/provider/default_shipping.dart';
 import 'package:kickavenue_clone/provider/eta_text.dart';
 
 import '../api/dio.dart';
@@ -28,7 +29,79 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   Map<String, dynamic> payment = {};
   String price = '0';
   int shippingFee = 0;
-  Map<String, dynamic> selectedAddress = {};
+  Map<String, dynamic> selectedAddress = {
+    'id': null,
+    'alias': null,
+    'full_name': null,
+    'phone_number': null,
+    'street_address': null,
+    'note': null,
+    'country': 'IDN',
+    'province': 'Jawa Barat',
+    'province_id': null,
+    'city': null,
+    'city_id': null,
+    'postal_code': null,
+  };
+  Map<String, dynamic> selectedVoucher = {
+    'created_at': '',
+    'ended_at': '',
+    'id': '',
+    'is_expired': false,
+    'rank': 0,
+    'started_at': '',
+    'updated_at': '',
+    'used': false,
+    'used_at': null,
+    'used_count': '0',
+    'user_id': 0,
+    'voucher_id': 0,
+    'voucher': {
+      'active': false,
+      'amount': "0",
+      'code': "",
+      'created_at': '',
+      'currency': '',
+      'deduct_type': '',
+      'description': '',
+      'disposable_voucher': false,
+      'enabled_payments': [],
+      'ended_at': '',
+      'group_name': null,
+      'id': 0,
+      'images': [],
+      'instructions': '',
+      'is_cashback': false,
+      'is_expired': false,
+      'limit': 0,
+      'limit_per_user': 0,
+      'listing_pre_order': false,
+      'listing_pre_verified': false,
+      'max_amount': '0',
+      'minimum_purchase': '0',
+      'name': '',
+      'new_user_ended_at': null,
+      'new_user_only': false,
+      'new_user_started_at': null,
+      'platform_specifications': 'APP',
+      'started_at': '',
+      'terms': '',
+      'type': '',
+      'updated_at': '',
+      'voucher_payment_methods': [],
+      'voucher_type': '',
+    }
+  };
+  Map<String, dynamic> selectedPromoProduct = {
+    'categoryVisible': '',
+    'description': '',
+    'img_url': '',
+    'isActive': false,
+    'isSelected': false,
+    'price': '',
+    'title': '',
+    'value': ''
+  };
   bool isFullWallet = false;
   bool useKickPoint = false;
 
@@ -39,6 +112,17 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   @override
   void initState() {
     super.initState();
+
+    Api().getWithAuth('users/shipping').then((content) {
+      final defaultShipping = content['data']
+              .firstWhere((address) => address['is_default'] == true) ??
+          {};
+
+      setState(() {
+        selectedAddress = defaultShipping;
+      });
+    });
+
     setState(() {
       currentProduct = Availables.fromJson(widget.product);
       price = currentProduct!.asking_price
@@ -46,6 +130,19 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       txt.text = currentProduct!.asking_price
           .substring(0, currentProduct!.asking_price.length - 3);
     });
+  }
+
+  int calculatePriceDecuctedByVoucher() {
+    int voucherAmount = selectedVoucher['voucher']['amount'] != ''
+        ? int.parse(selectedVoucher['voucher']['amount']
+            .substring(0, selectedVoucher['voucher']['amount'].length - 3))
+        : 0;
+    int totalVoucherUsage = selectedVoucher['voucher']['type'] == 'percentage'
+        ? (int.parse(price) * voucherAmount / 100).round()
+        : voucherAmount;
+    int totalPrice = int.parse(price) - totalVoucherUsage;
+
+    return totalPrice;
   }
 
   Future<bool> pay() async {
@@ -69,6 +166,10 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       })['id'];
 
       String endpointUri = '';
+      int promoPrice = selectedPromoProduct['price'] != ''
+          ? int.parse(selectedPromoProduct['price'])
+          : 0;
+      int shippingAndPromoProduct = shippingFee + promoPrice;
 
       final shippingPayload = {
         'id': selectedAddress['id'],
@@ -104,9 +205,11 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         'administration_fee': 0,
         'currency': 'IDR',
         'facebook_ad_campaign': null,
-        'ka_courier_option': 'FLAT_RATE',
-        'ka_courier_price': shippingFee,
-        'offer_amount': int.parse(price),
+        'ka_courier_option': selectedPromoProduct['value'].isNotEmpty
+            ? selectedPromoProduct['value']
+            : 'FLAT_RATE',
+        'ka_courier_price': shippingAndPromoProduct,
+        'offer_amount': calculatePriceDecuctedByVoucher(),
         'payment_method': payment['payment_method'],
         'point_enabled': useKickPoint,
         'quantity': 1,
@@ -123,7 +226,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         'product_variant_id': currentProduct!.product_variant_id,
         'size_id': currentProduct!.size_id,
         'payment_method': payment['payment_method'],
-        'amount': int.parse(price),
+        'amount': calculatePriceDecuctedByVoucher(),
         'ka_courier_price': shippingFee,
         'administration_fee': 0,
         'user_sell_id': currentProduct!.id,
@@ -168,7 +271,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       });
 
       if (context.mounted) {
-        context.pushNamed("payment", params: {
+        context.pushNamed('payment', params: {
           'invoice': '',
         });
       }
@@ -186,33 +289,11 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   @override
   Widget build(BuildContext context) {
     AsyncValue etaTexts = ref.watch(etaProvider);
-    AsyncValue defaultShipping = ref.watch(defaultShippingProvider);
     Map<String, dynamic> userInfo = ref.watch(userDataProvider);
 
-    selectedAddress = defaultShipping.maybeWhen(
-        data: (value) => value,
-        orElse: () => {
-              'id': null,
-              'alias': null,
-              'full_name': null,
-              'phone_number': null,
-              'street_address': null,
-              'note': null,
-              'country': null,
-              'province': null,
-              'province_id': null,
-              'city': null,
-              'city_id': null,
-              'postal_code': null,
-            });
-
     ref.read(courierProvider.notifier).fetch(
-        country: defaultShipping.value == null
-            ? 'IDN'
-            : defaultShipping.value['country'],
-        province: defaultShipping.value == null
-            ? 'Jawa Barat'
-            : defaultShipping.value['province'],
+        country: selectedAddress['country'],
+        province: selectedAddress['province'],
         productPrice: int.parse(currentProduct!.asking_price
             .substring(0, currentProduct!.asking_price.length - 3)),
         productVariantId: currentProduct!.product_variant_id,
@@ -256,8 +337,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         .join(', ');
 
     final int amountToBePaid = shippingFee +
-        int.parse(currentProduct!.asking_price
-            .substring(0, currentProduct!.asking_price.length - 3)) -
+        calculatePriceDecuctedByVoucher() -
         int.parse(currentProduct!.subsidy_price ??
             '0'.substring(
                 0,
@@ -267,7 +347,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
 
     final bool enabledButton = payment.isNotEmpty &&
         amountToBePaid > 0 &&
-        defaultShipping.value != null &&
+        selectedAddress != {} &&
         price != '0' &&
         !submittingPayment;
 
@@ -528,37 +608,35 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                 borderRadius: BorderRadius.circular(15),
                 border: Border.all(color: Colors.grey.shade300),
               ),
-              child: defaultShipping.when(
-                data: (data) {
-                  return InkWell(
-                    onTap: () {
-                      showModalBottomSheet<void>(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return const AddressBottomSheet();
-                        },
-                      );
+              child: InkWell(
+                onTap: () async {
+                  final address =
+                      await showModalBottomSheet<Map<String, dynamic>>(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return const AddressBottomSheet();
                     },
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          data == {}
-                              ? 'Shipping Address'
-                              : '${data['alias']} - ${data['full_name']}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const Icon(Icons.arrow_forward_ios),
-                      ],
-                    ),
                   );
+                  setState(() {
+                    if (address != null) {
+                      selectedAddress = address;
+                    }
+                  });
                 },
-                loading: () => const Center(
-                  child: CircularProgressIndicator(),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      selectedAddress == {}
+                          ? 'Shipping Address'
+                          : '${selectedAddress['alias']} - ${selectedAddress['full_name']}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_ios),
+                  ],
                 ),
-                error: (e, s) => Text(e.toString()),
               ),
             ),
             Container(
@@ -600,6 +678,87 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                 ),
               ),
             ),
+            isBuyNow
+                ? Container(
+                    margin: const EdgeInsets.only(top: 15, left: 15, right: 15),
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: InkWell(
+                      onTap: () async {
+                        final voucher =
+                            await showModalBottomSheet<Map<String, dynamic>>(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return const VoucherBottomSheet();
+                          },
+                        );
+                        setState(() {
+                          if (voucher != null) {
+                            print(voucher['voucher']);
+                            selectedVoucher = voucher;
+                          }
+                        });
+                      },
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            selectedVoucher['voucher_id'] == 0
+                                ? 'Select Voucher'
+                                : '${selectedVoucher['voucher']['name']}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Icon(Icons.arrow_forward_ios),
+                        ],
+                      ),
+                    ),
+                  )
+                : Container(),
+            isBuyNow
+                ? Container(
+                    margin: const EdgeInsets.only(top: 15, left: 15, right: 15),
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: InkWell(
+                      onTap: () async {
+                        final promoProduct =
+                            await showModalBottomSheet<Map<String, dynamic>>(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return const PromoProductBottomSheet();
+                          },
+                        );
+                        setState(() {
+                          if (promoProduct != null) {
+                            selectedPromoProduct = promoProduct;
+                          }
+                        });
+                      },
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            selectedPromoProduct['value'].isEmpty
+                                ? 'Select Promo Product'
+                                : '${selectedPromoProduct['title']}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Icon(Icons.arrow_forward_ios),
+                        ],
+                      ),
+                    ),
+                  )
+                : Container(),
             payment.isNotEmpty && payment['payment_method'] == FULLWALLET
                 ? Container(
                     margin: const EdgeInsets.only(left: 25, right: 15, top: 15),
