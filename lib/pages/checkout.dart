@@ -104,6 +104,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   };
   bool isFullWallet = false;
   bool useKickPoint = false;
+  bool priceDetailOpened = true;
 
   bool submittingPayment = false;
 
@@ -132,16 +133,34 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     });
   }
 
-  int calculatePriceDecuctedByVoucher() {
-    int voucherAmount = selectedVoucher['voucher']['amount'] != ''
+  int promoProductPrice() {
+    if (selectedPromoProduct['price'] == '' ||
+        selectedPromoProduct['price'] == '0') {
+      return 0;
+    }
+    return int.parse(selectedPromoProduct['price']
+        .substring(0, selectedPromoProduct['price'].length - 3));
+  }
+
+  int voucherPrice() {
+    if (selectedVoucher['voucher']['amount'] == '' ||
+        selectedVoucher['voucher']['amount'] == '0') {
+      return 0;
+    }
+    int voucherAmount = selectedVoucher['voucher']['amount'] != '' &&
+            selectedVoucher['voucher']['amount'] != '0'
         ? int.parse(selectedVoucher['voucher']['amount']
             .substring(0, selectedVoucher['voucher']['amount'].length - 3))
         : 0;
     int totalVoucherUsage = selectedVoucher['voucher']['type'] == 'percentage'
         ? (int.parse(price) * voucherAmount / 100).round()
         : voucherAmount;
-    int totalPrice = int.parse(price) - totalVoucherUsage;
 
+    return totalVoucherUsage;
+  }
+
+  int calculatePriceDecuctedByVoucher() {
+    int totalPrice = int.parse(price) - voucherPrice();
     return totalPrice;
   }
 
@@ -337,7 +356,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         .join(', ');
 
     final int amountToBePaid = shippingFee +
-        calculatePriceDecuctedByVoucher() -
+        calculatePriceDecuctedByVoucher() +
+        promoProductPrice() -
         int.parse(currentProduct!.subsidy_price ??
             '0'.substring(
                 0,
@@ -376,459 +396,624 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                 ),
         ),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 15, left: 15, right: 15),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
               child: Column(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => setState(() {
-                            isBuyNow = true;
-                            price = lowestAsk.toString();
-                            txt.text = lowestAsk.toString();
-                          }),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 10,
-                              horizontal: 15,
-                            ),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(15),
-                              color: isBuyNow ? Colors.blue : Colors.white,
-                            ),
-                            child: Column(
-                              children: [
-                                Text(
-                                  'Buy Now',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
+                  Container(
+                    margin: const EdgeInsets.only(top: 15, left: 15, right: 15),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: InkWell(
+                                onTap: () => setState(() {
+                                  isBuyNow = true;
+                                  price = lowestAsk.toString();
+                                  txt.text = lowestAsk.toString();
+                                }),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 10,
+                                    horizontal: 15,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(15),
                                     color:
-                                        isBuyNow ? Colors.white : Colors.black,
+                                        isBuyNow ? Colors.blue : Colors.white,
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        'Buy Now',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: isBuyNow
+                                              ? Colors.white
+                                              : Colors.black,
+                                        ),
+                                      ),
+                                      Container(
+                                        margin: const EdgeInsets.only(top: 5),
+                                        child: Text(
+                                          'Lowest Ask',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: isBuyNow
+                                                ? Colors.white
+                                                : Colors.black,
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        margin: const EdgeInsets.only(top: 5),
+                                        child: Text(
+                                          'Rp ${formatCurrency.format(lowestAsk)}',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: isBuyNow
+                                                ? Colors.white
+                                                : Colors.black,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                Container(
-                                  margin: const EdgeInsets.only(top: 5),
-                                  child: Text(
-                                    'Lowest Ask',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: isBuyNow
-                                          ? Colors.white
-                                          : Colors.black,
-                                    ),
+                              ),
+                            ),
+                            Expanded(
+                              child: InkWell(
+                                onTap: () => setState(() {
+                                  isBuyNow = false;
+                                }),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 10,
+                                    horizontal: 15,
                                   ),
-                                ),
-                                Container(
-                                  margin: const EdgeInsets.only(top: 5),
-                                  child: Text(
-                                    'Rp ${formatCurrency.format(lowestAsk)}',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                      color: isBuyNow
-                                          ? Colors.white
-                                          : Colors.black,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => setState(() {
-                            isBuyNow = false;
-                          }),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 10,
-                              horizontal: 15,
-                            ),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(15),
-                              color: isBuyNow == false
-                                  ? Colors.blue
-                                  : Colors.white,
-                            ),
-                            child: Column(
-                              children: [
-                                Text(
-                                  'Make Offer',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(15),
                                     color: isBuyNow == false
-                                        ? Colors.white
-                                        : Colors.black,
+                                        ? Colors.blue
+                                        : Colors.white,
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        'Make Offer',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: isBuyNow == false
+                                              ? Colors.white
+                                              : Colors.black,
+                                        ),
+                                      ),
+                                      Container(
+                                        margin: const EdgeInsets.only(top: 5),
+                                        child: Text(
+                                          'Highest Offer',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: isBuyNow == false
+                                                ? Colors.white
+                                                : Colors.black,
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        margin: const EdgeInsets.only(top: 5),
+                                        child: Text(
+                                          'Rp ${formatCurrency.format(highestOffer)}',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: isBuyNow == false
+                                                ? Colors.white
+                                                : Colors.black,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                Container(
-                                  margin: const EdgeInsets.only(top: 5),
-                                  child: Text(
-                                    'Highest Offer',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: isBuyNow == false
-                                          ? Colors.white
-                                          : Colors.black,
-                                    ),
-                                  ),
-                                ),
-                                Container(
-                                  margin: const EdgeInsets.only(top: 5),
-                                  child: Text(
-                                    'Rp ${formatCurrency.format(highestOffer)}',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                      color: isBuyNow == false
-                                          ? Colors.white
-                                          : Colors.black,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              margin: const EdgeInsets.all(15),
-              child: TextField(
-                controller: txt,
-                enabled: isBuyNow ? false : true,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  hintText: 'Place your price here..',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(15)),
-                  ),
-                ),
-                style: const TextStyle(
-                  fontSize: 16,
-                ),
-                onChanged: (value) => setState(() {
-                  price = value;
-                }),
-              ),
-            ),
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 15),
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Size',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          currentProduct!.size.US ?? '',
-                          textAlign: TextAlign.right,
+                          ],
                         ),
                       ],
                     ),
                   ),
                   Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Condition',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
+                    margin: const EdgeInsets.all(15),
+                    child: TextField(
+                      controller: txt,
+                      enabled: isBuyNow ? false : true,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        hintText: 'Place your price here..',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(15)),
                         ),
-                        SizedBox(
-                          width: 200,
-                          child: Text(
-                            productConditions,
-                            textAlign: TextAlign.right,
-                          ),
-                        ),
-                      ],
+                      ),
+                      style: const TextStyle(
+                        fontSize: 16,
+                      ),
+                      onChanged: (value) => setState(() {
+                        price = value;
+                      }),
                     ),
                   ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const SizedBox(
-                        width: 150,
-                        child: Text(
-                          'Estimated Time of Arrival',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        width: 150,
-                        child: Text(
-                          etaText,
-                          textAlign: TextAlign.right,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              margin: const EdgeInsets.all(15),
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: InkWell(
-                onTap: () async {
-                  final address =
-                      await showModalBottomSheet<Map<String, dynamic>>(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return const AddressBottomSheet();
-                    },
-                  );
-                  setState(() {
-                    if (address != null) {
-                      selectedAddress = address;
-                    }
-                  });
-                },
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      selectedAddress == {}
-                          ? 'Shipping Address'
-                          : '${selectedAddress['alias']} - ${selectedAddress['full_name']}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Icon(Icons.arrow_forward_ios),
-                  ],
-                ),
-              ),
-            ),
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 15),
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: InkWell(
-                onTap: () async {
-                  final paymentMethodValue =
-                      await showModalBottomSheet<Map<String, dynamic>>(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return const PaymentMethodBottomSheet();
-                    },
-                  );
-                  setState(() {
-                    payment = paymentMethodValue ?? {};
-                    if (payment!['payment_method'] == FULLWALLET) {
-                      isFullWallet = true;
-                    } else {
-                      isFullWallet = false;
-                    }
-                  });
-                },
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      payment.isEmpty ? 'Payment Method' : payment['label'],
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Icon(Icons.arrow_forward_ios),
-                  ],
-                ),
-              ),
-            ),
-            isBuyNow
-                ? Container(
-                    margin: const EdgeInsets.only(top: 15, left: 15, right: 15),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 15),
                     padding: const EdgeInsets.all(15),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(15),
                       border: Border.all(color: Colors.grey.shade300),
                     ),
-                    child: InkWell(
-                      onTap: () async {
-                        final voucher =
-                            await showModalBottomSheet<Map<String, dynamic>>(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return const VoucherBottomSheet();
-                          },
-                        );
-                        setState(() {
-                          if (voucher != null) {
-                            print(voucher['voucher']);
-                            selectedVoucher = voucher;
-                          }
-                        });
-                      },
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            selectedVoucher['voucher_id'] == 0
-                                ? 'Select Voucher'
-                                : '${selectedVoucher['voucher']['name']}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Icon(Icons.arrow_forward_ios),
-                        ],
-                      ),
-                    ),
-                  )
-                : Container(),
-            isBuyNow
-                ? Container(
-                    margin: const EdgeInsets.only(top: 15, left: 15, right: 15),
-                    padding: const EdgeInsets.all(15),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(15),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: InkWell(
-                      onTap: () async {
-                        final promoProduct =
-                            await showModalBottomSheet<Map<String, dynamic>>(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return const PromoProductBottomSheet();
-                          },
-                        );
-                        setState(() {
-                          if (promoProduct != null) {
-                            selectedPromoProduct = promoProduct;
-                          }
-                        });
-                      },
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            selectedPromoProduct['value'].isEmpty
-                                ? 'Select Promo Product'
-                                : '${selectedPromoProduct['title']}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Icon(Icons.arrow_forward_ios),
-                        ],
-                      ),
-                    ),
-                  )
-                : Container(),
-            payment.isNotEmpty && payment['payment_method'] == FULLWALLET
-                ? Container(
-                    margin: const EdgeInsets.only(left: 25, right: 15, top: 15),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Column(
                       children: [
-                        SizedBox(
-                          width: 250,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               const Text(
-                                'Use Kick points',
+                                'Size',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                               Text(
-                                  'Kick Credit: Rp ${formatCurrency.format(int.parse(userInfo['balance'].substring(0, userInfo['balance'].length - 3)))}'),
-                              Text(
-                                  'Kick Point: Rp ${formatCurrency.format(int.parse(userInfo['locked_balance'].substring(0, userInfo['locked_balance'].length - 3)))}'),
+                                currentProduct!.size.US ?? '',
+                                textAlign: TextAlign.right,
+                              ),
                             ],
                           ),
                         ),
-                        Switch(
-                          // This bool value toggles the switch.
-                          value: useKickPoint,
-                          activeColor: Colors.blue,
-                          onChanged: (bool value) {
-                            // This is called when the user toggles the switch.
-                            setState(() {
-                              useKickPoint = value;
-                            });
-                          },
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Condition',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(
+                                width: 200,
+                                child: Text(
+                                  productConditions,
+                                  textAlign: TextAlign.right,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const SizedBox(
+                              width: 150,
+                              child: Text(
+                                'Estimated Time of Arrival',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            SizedBox(
+                              width: 150,
+                              child: Text(
+                                etaText,
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  )
-                : Container(),
-            Container(
-              margin: const EdgeInsets.only(left: 15, right: 15, top: 15),
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const SizedBox(
-                    width: 150,
-                    child: Text(
-                      'Amount to be paid',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
+                  ),
+                  Container(
+                    margin: const EdgeInsets.all(15),
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: InkWell(
+                      onTap: () async {
+                        final address =
+                            await showModalBottomSheet<Map<String, dynamic>>(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return const AddressBottomSheet();
+                          },
+                        );
+                        setState(() {
+                          if (address != null) {
+                            selectedAddress = address;
+                          }
+                        });
+                      },
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            selectedAddress == {}
+                                ? 'Shipping Address'
+                                : '${selectedAddress['alias']} - ${selectedAddress['full_name']}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Icon(Icons.arrow_forward_ios),
+                        ],
                       ),
                     ),
                   ),
-                  SizedBox(
-                    width: 150,
-                    child: Text(
-                      formatCurrency.format(amountToBePaid),
-                      textAlign: TextAlign.right,
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 15),
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: InkWell(
+                      onTap: () async {
+                        final paymentMethodValue =
+                            await showModalBottomSheet<Map<String, dynamic>>(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return const PaymentMethodBottomSheet();
+                          },
+                        );
+                        setState(() {
+                          payment = paymentMethodValue ?? {};
+                          if (payment!['payment_method'] == FULLWALLET) {
+                            isFullWallet = true;
+                          } else {
+                            isFullWallet = false;
+                          }
+                        });
+                      },
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            payment.isEmpty
+                                ? 'Payment Method'
+                                : payment['label'],
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Icon(Icons.arrow_forward_ios),
+                        ],
+                      ),
+                    ),
+                  ),
+                  isBuyNow
+                      ? Container(
+                          margin: const EdgeInsets.only(
+                              top: 15, left: 15, right: 15),
+                          padding: const EdgeInsets.all(15),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: InkWell(
+                            onTap: () async {
+                              final voucher = await showModalBottomSheet<
+                                  Map<String, dynamic>>(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return const VoucherBottomSheet();
+                                },
+                              );
+                              setState(() {
+                                if (voucher != null) {
+                                  print(voucher['voucher']);
+                                  selectedVoucher = voucher;
+                                }
+                              });
+                            },
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  selectedVoucher['voucher_id'] == 0
+                                      ? 'Select Voucher'
+                                      : '${selectedVoucher['voucher']['name']}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const Icon(Icons.arrow_forward_ios),
+                              ],
+                            ),
+                          ),
+                        )
+                      : Container(),
+                  isBuyNow
+                      ? Container(
+                          margin: const EdgeInsets.only(
+                              top: 15, left: 15, right: 15),
+                          padding: const EdgeInsets.all(15),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: InkWell(
+                            onTap: () async {
+                              final promoProduct = await showModalBottomSheet<
+                                  Map<String, dynamic>>(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return const PromoProductBottomSheet();
+                                },
+                              );
+                              setState(() {
+                                if (promoProduct != null) {
+                                  selectedPromoProduct = promoProduct;
+                                }
+                              });
+                            },
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  selectedPromoProduct['value'].isEmpty
+                                      ? 'Select Promo Product'
+                                      : '${selectedPromoProduct['title']}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const Icon(Icons.arrow_forward_ios),
+                              ],
+                            ),
+                          ),
+                        )
+                      : Container(),
+                  payment.isNotEmpty && payment['payment_method'] == FULLWALLET
+                      ? Container(
+                          margin: const EdgeInsets.only(
+                              left: 25, right: 15, top: 15),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              SizedBox(
+                                width: 250,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Use Kick points',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                        'Kick Credit: Rp ${formatCurrency.format(int.parse(userInfo['balance'].substring(0, userInfo['balance'].length - 3)))}'),
+                                    Text(
+                                        'Kick Point: Rp ${formatCurrency.format(int.parse(userInfo['locked_balance'].substring(0, userInfo['locked_balance'].length - 3)))}'),
+                                  ],
+                                ),
+                              ),
+                              Switch(
+                                // This bool value toggles the switch.
+                                value: useKickPoint,
+                                activeColor: Colors.blue,
+                                onChanged: (bool value) {
+                                  // This is called when the user toggles the switch.
+                                  setState(() {
+                                    useKickPoint = value;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        )
+                      : Container(),
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        priceDetailOpened = !priceDetailOpened;
+                      });
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(
+                        left: 15,
+                        right: 15,
+                        top: 15,
+                        bottom: 100,
+                      ),
+                      padding: const EdgeInsets.all(15),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: priceDetailOpened
+                          ? Column(
+                              children: [
+                                const Text(
+                                  'Payment Summary',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                                Container(
+                                  margin: const EdgeInsets.only(top: 15),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const SizedBox(
+                                        width: 150,
+                                        child: Text(
+                                          'Product Price',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 150,
+                                        child: Text(
+                                          'Rp ${formatCurrency.format(int.parse(currentProduct!.asking_price.substring(0, currentProduct!.asking_price.length - 3)))}',
+                                          textAlign: TextAlign.right,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  margin: const EdgeInsets.only(top: 15),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const SizedBox(
+                                        width: 150,
+                                        child: Text(
+                                          'Shipping Fee',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 150,
+                                        child: Text(
+                                          'Rp ${formatCurrency.format(shippingFee)}',
+                                          textAlign: TextAlign.right,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  margin: const EdgeInsets.only(top: 15),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const SizedBox(
+                                        width: 150,
+                                        child: Text(
+                                          'Promo Product',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 150,
+                                        child: Text(
+                                          'Rp ${formatCurrency.format(selectedPromoProduct['price'].isEmpty ? 0 : int.parse(selectedPromoProduct['price'].substring(0, selectedPromoProduct['price'].length - 3)))}',
+                                          textAlign: TextAlign.right,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  margin: const EdgeInsets.only(top: 15),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const SizedBox(
+                                        width: 150,
+                                        child: Text(
+                                          'Voucher',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 150,
+                                        child: Text(
+                                          '- Rp ${formatCurrency.format(voucherPrice())}',
+                                          textAlign: TextAlign.right,
+                                          style: const TextStyle(
+                                            color: Colors.blue,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  margin: const EdgeInsets.only(top: 15),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const SizedBox(
+                                        width: 150,
+                                        child: Text(
+                                          'Amount to be paid',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 150,
+                                        child: Text(
+                                          formatCurrency.format(amountToBePaid),
+                                          textAlign: TextAlign.right,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const SizedBox(
+                                  width: 150,
+                                  child: Text(
+                                    'Amount to be paid',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: 150,
+                                  child: Text(
+                                    formatCurrency.format(amountToBePaid),
+                                    textAlign: TextAlign.right,
+                                  ),
+                                ),
+                              ],
+                            ),
                     ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

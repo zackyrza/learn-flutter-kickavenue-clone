@@ -63,7 +63,7 @@ class _VoucherBottomSheetState extends ConsumerState<VoucherBottomSheet> {
                   itemCount: data.length,
                   itemBuilder: (context, index) {
                     return ListTile(
-                      title: Text(data[index]['voucher']['name']),
+                      title: Text(data[index]['voucher']['name'] ?? ''),
                       subtitle: Text(data[index]['voucher']['code']),
                       onTap: () {
                         Navigator.pop(context, data[index]);
